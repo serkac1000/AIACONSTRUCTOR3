@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, jsonify, send_file
+
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 import json
 import zipfile
 import io
@@ -9,6 +10,11 @@ import requests
 from datetime import datetime
 
 app = Flask(__name__)
+
+# Create saved files directory
+SAVED_FILES_DIR = 'saved_aia_files'
+if not os.path.exists(SAVED_FILES_DIR):
+    os.makedirs(SAVED_FILES_DIR)
 
 # HTML template for the web interface
 HTML_TEMPLATE = '''
@@ -193,37 +199,6 @@ HTML_TEMPLATE = '''
         .tab-content.active {
             display: block;
         }
-        .preview-container {
-            margin-top: 20px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            background: #f8f9fa;
-        }
-        .preview-phone {
-            width: 300px;
-            height: 600px;
-            margin: 0 auto;
-            border: 10px solid #333;
-            border-radius: 30px;
-            background: white;
-            position: relative;
-            overflow: hidden;
-        }
-        .preview-screen {
-            width: 100%;
-            height: 100%;
-            background: white;
-            position: relative;
-        }
-        .preview-component {
-            position: absolute;
-            background: #eee;
-            border: 1px solid #ccc;
-            padding: 5px;
-            border-radius: 5px;
-            font-size: 14px;
-        }
         .api-section {
             margin-top: 20px;
             padding: 20px;
@@ -240,6 +215,30 @@ HTML_TEMPLATE = '''
             white-space: pre-wrap;
             display: none;
         }
+        .saved-files {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-link {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .file-link:hover {
+            text-decoration: underline;
+        }
         @media (max-width: 768px) {
             .row {
                 flex-direction: column;
@@ -255,7 +254,7 @@ HTML_TEMPLATE = '''
             <div class="tab active" data-tab="basic">Basic Settings</div>
             <div class="tab" data-tab="design">Design Upload</div>
             <div class="tab" data-tab="ai">AI Coding</div>
-            <div class="tab" data-tab="preview">App Preview</div>
+            <div class="tab" data-tab="saved">Saved Files</div>
         </div>
 
         <form id="aiaForm">
@@ -289,12 +288,12 @@ HTML_TEMPLATE = '''
 
             <div class="tab-content" id="design-tab">
                 <div class="form-group">
-                    <label for="designImage">Upload Design Image (optional):</label>
+                    <label for="designImage">Upload Design Image (required for visual reference):</label>
                     <div class="file-input-container">
                         <div class="file-input-button">Choose Image</div>
-                        <input type="file" id="designImage" name="designImage" accept="image/*">
+                        <input type="file" id="designImage" name="designImage" accept="image/*" required>
                     </div>
-                    <p>Upload a sketch, mockup, or reference design for your app</p>
+                    <p>Upload a sketch, mockup, or reference design for your app (PNG, JPG, or GIF)</p>
                     <img id="imagePreview" class="image-preview" alt="Design Preview">
                     <input type="hidden" id="imageData" name="imageData">
                 </div>
@@ -303,12 +302,12 @@ HTML_TEMPLATE = '''
             <div class="tab-content" id="ai-tab">
                 <div class="api-section">
                     <div class="form-group">
-                        <label for="geminiApiKey">Gemini API Key:</label>
-                        <input type="text" id="geminiApiKey" name="geminiApiKey" placeholder="Enter your Gemini API key">
+                        <label for="geminiApiKey">Gemini API Key (required for AI generation):</label>
+                        <input type="text" id="geminiApiKey" name="geminiApiKey" placeholder="Enter your Gemini API key" required>
                     </div>
                     <div class="form-group">
                         <label for="aiPrompt">AI Prompt for Code Generation:</label>
-                        <textarea id="aiPrompt" name="aiPrompt" placeholder="Generate blocks code for a calculator app that can add, subtract, multiply and divide two numbers"></textarea>
+                        <textarea id="aiPrompt" name="aiPrompt" placeholder="Generate blocks code for a calculator app that can add, subtract, multiply and divide two numbers" required></textarea>
                     </div>
                     <button type="button" id="saveApiKey" class="btn btn-secondary">Save API Key</button>
                     <button type="button" id="testApiKey" class="btn btn-success">Test API</button>
@@ -316,15 +315,10 @@ HTML_TEMPLATE = '''
                 </div>
             </div>
 
-            <div class="tab-content" id="preview-tab">
-                <div class="preview-container">
-                    <h3>App Preview</h3>
-                    <p>This is a simplified preview of how your app might look. The actual appearance in MIT App Inventor may vary.</p>
-                    <div class="preview-phone">
-                        <div class="preview-screen" id="previewScreen">
-                            <!-- Components will be added here dynamically -->
-                        </div>
-                    </div>
+            <div class="tab-content" id="saved-tab">
+                <div class="saved-files">
+                    <h3>Saved AIA Files</h3>
+                    <div id="savedFilesList">Loading saved files...</div>
                 </div>
             </div>
 
@@ -345,27 +339,36 @@ HTML_TEMPLATE = '''
 
     <script>
         // Tab functionality
-        document.querySelectorAll('.tab').forEach(tab => {
+        document.querySelectorAll('.tab').forEach(function(tab) {
             tab.addEventListener('click', function() {
                 // Remove active class from all tabs
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab').forEach(function(t) {
+                    t.classList.remove('active');
+                });
                 // Add active class to clicked tab
                 this.classList.add('active');
 
                 // Hide all tab content
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(function(content) {
+                    content.classList.remove('active');
+                });
                 // Show content for clicked tab
                 document.getElementById(this.dataset.tab + '-tab').classList.add('active');
+                
+                // Load saved files when saved tab is clicked
+                if (this.dataset.tab === 'saved') {
+                    loadSavedFiles();
+                }
             });
         });
 
         // Image upload preview
         document.getElementById('designImage').addEventListener('change', function(e) {
-            const file = e.target.files[0];
+            var file = e.target.files[0];
             if (file) {
-                const reader = new FileReader();
+                var reader = new FileReader();
                 reader.onload = function(event) {
-                    const imagePreview = document.getElementById('imagePreview');
+                    var imagePreview = document.getElementById('imagePreview');
                     imagePreview.src = event.target.result;
                     imagePreview.style.display = 'block';
 
@@ -378,7 +381,7 @@ HTML_TEMPLATE = '''
 
         // Save API Key
         document.getElementById('saveApiKey').addEventListener('click', function() {
-            const apiKey = document.getElementById('geminiApiKey').value;
+            var apiKey = document.getElementById('geminiApiKey').value;
             if (apiKey) {
                 localStorage.setItem('geminiApiKey', apiKey);
                 alert('API Key saved successfully!');
@@ -393,200 +396,142 @@ HTML_TEMPLATE = '''
         }
 
         // Test API Key
-        document.getElementById('testApiKey').addEventListener('click', async function() {
-            const apiKey = document.getElementById('geminiApiKey').value;
-            const prompt = document.getElementById('aiPrompt').value || 'Generate a simple greeting';
+        document.getElementById('testApiKey').addEventListener('click', function() {
+            var apiKey = document.getElementById('geminiApiKey').value;
+            var prompt = document.getElementById('aiPrompt').value || 'Generate a simple greeting';
 
             if (!apiKey) {
                 alert('Please enter an API Key');
                 return;
             }
 
-            const apiResponse = document.getElementById('apiResponse');
+            var apiResponse = document.getElementById('apiResponse');
             apiResponse.textContent = 'Testing API connection...';
             apiResponse.style.display = 'block';
 
-            try {
-                const response = await fetch('/test-gemini-api', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ apiKey, prompt })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
+            fetch('/test-gemini-api', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ apiKey: apiKey, prompt: prompt })
+            })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.response) {
                     apiResponse.textContent = 'API Test Successful! Response:\n\n' + data.response;
                 } else {
-                    apiResponse.textContent = 'API Test Failed: ' + data.error;
+                    apiResponse.textContent = 'API Test Failed: ' + (data.error || 'Unknown error');
                 }
-            } catch (error) {
+            })
+            .catch(function(error) {
                 apiResponse.textContent = 'Error: ' + error.message;
-            }
+            });
         });
 
-        // Generate preview based on form inputs
-        function updatePreview() {
-            const appName = document.getElementById('appName').value || 'My App';
-            const appType = document.getElementById('appType').value;
-            const prompt = document.getElementById('prompt').value;
-
-            // Clear previous preview
-            const previewScreen = document.getElementById('previewScreen');
-            previewScreen.innerHTML = '';
-
-            // Add app title
-            const titleBar = document.createElement('div');
-            titleBar.style.width = '100%';
-            titleBar.style.height = '40px';
-            titleBar.style.backgroundColor = '#3F51B5';
-            titleBar.style.color = 'white';
-            titleBar.style.textAlign = 'center';
-            titleBar.style.lineHeight = '40px';
-            titleBar.style.fontWeight = 'bold';
-            titleBar.textContent = appName;
-            previewScreen.appendChild(titleBar);
-
-            // Parse prompt for components
-            if (prompt.toLowerCase().includes('calculator')) {
-                // Add calculator display
-                const display = document.createElement('div');
-                display.className = 'preview-component';
-                display.style.top = '50px';
-                display.style.left = '10px';
-                display.style.right = '10px';
-                display.style.height = '60px';
-                display.style.backgroundColor = 'white';
-                display.style.border = '1px solid #ddd';
-                display.style.textAlign = 'right';
-                display.style.fontSize = '24px';
-                display.style.lineHeight = '60px';
-                display.style.paddingRight = '10px';
-                display.textContent = '0';
-                previewScreen.appendChild(display);
-
-                // Add calculator buttons
-                const buttonContainer = document.createElement('div');
-                buttonContainer.style.position = 'absolute';
-                buttonContainer.style.top = '120px';
-                buttonContainer.style.left = '10px';
-                buttonContainer.style.right = '10px';
-                buttonContainer.style.bottom = '10px';
-                buttonContainer.style.display = 'grid';
-                buttonContainer.style.gridTemplateColumns = 'repeat(4, 1fr)';
-                buttonContainer.style.gridGap = '10px';
-
-                // Numbers and operations
-                const buttons = ['7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', '0', '.', '=', '+'];
-                buttons.forEach(btn => {
-                    const button = document.createElement('div');
-                    button.className = 'preview-component';
-                    button.style.position = 'relative';
-                    button.style.height = '50px';
-                    button.style.backgroundColor = isNaN(btn) ? '#FF4081' : '#3F51B5';
-                    button.style.color = 'white';
-                    button.style.textAlign = 'center';
-                    button.style.lineHeight = '50px';
-                    button.style.borderRadius = '5px';
-                    button.textContent = btn;
-                    buttonContainer.appendChild(button);
+        // Load saved files
+        function loadSavedFiles() {
+            fetch('/saved-files')
+                .then(function(response) {
+                    return response.json();
+                })
+                .then(function(data) {
+                    var savedFilesList = document.getElementById('savedFilesList');
+                    if (data.files && data.files.length > 0) {
+                        savedFilesList.innerHTML = '';
+                        data.files.forEach(function(file) {
+                            var fileItem = document.createElement('div');
+                            fileItem.className = 'file-item';
+                            fileItem.innerHTML = '<a href="/download-saved/' + encodeURIComponent(file.name) + '" class="file-link">' + file.name + '</a><span>' + file.date + '</span>';
+                            savedFilesList.appendChild(fileItem);
+                        });
+                    } else {
+                        savedFilesList.innerHTML = '<p>No saved files yet.</p>';
+                    }
+                })
+                .catch(function(error) {
+                    document.getElementById('savedFilesList').innerHTML = '<p>Error loading saved files.</p>';
                 });
-
-                previewScreen.appendChild(buttonContainer);
-            } else if (prompt.toLowerCase().includes('list')) {
-                // Create a list view
-                const listView = document.createElement('div');
-                listView.style.position = 'absolute';
-                listView.style.top = '50px';
-                listView.style.left = '10px';
-                listView.style.right = '10px';
-                listView.style.bottom = '10px';
-                listView.style.backgroundColor = 'white';
-                listView.style.border = '1px solid #ddd';
-                listView.style.overflow = 'auto';
-
-                // Add list items
-                for (let i = 1; i <= 10; i++) {
-                    const item = document.createElement('div');
-                    item.style.padding = '15px';
-                    item.style.borderBottom = '1px solid #eee';
-                    item.textContent = 'Item ' + i;
-                    listView.appendChild(item);
-                }
-
-                previewScreen.appendChild(listView);
-            } else {
-                // Default layout with some basic components
-                const label = document.createElement('div');
-                label.className = 'preview-component';
-                label.style.top = '70px';
-                label.style.left = '50%';
-                label.style.transform = 'translateX(-50%)';
-                label.style.padding = '10px 20px';
-                label.textContent = 'Welcome to ' + appName;
-                previewScreen.appendChild(label);
-
-                const button = document.createElement('div');
-                button.className = 'preview-component';
-                button.style.top = '150px';
-                button.style.left = '50%';
-                button.style.transform = 'translateX(-50%)';
-                button.style.padding = '15px 30px';
-                button.style.backgroundColor = '#3F51B5';
-                button.style.color = 'white';
-                button.style.borderRadius = '5px';
-                button.textContent = 'Click Me';
-                previewScreen.appendChild(button);
-            }
         }
 
-        // Update preview when inputs change
-        document.getElementById('appName').addEventListener('input', updatePreview);
-        document.getElementById('appType').addEventListener('change', updatePreview);
-        document.getElementById('prompt').addEventListener('input', updatePreview);
-
-        // Initial preview update
-        document.addEventListener('DOMContentLoaded', updatePreview);
-
         // Form submission
-        document.getElementById('aiaForm').addEventListener('submit', async function(e) {
+        document.getElementById('aiaForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData);
+            var formData = new FormData(e.target);
+            var data = {};
+            
+            // Convert FormData to regular object
+            for (var pair of formData.entries()) {
+                data[pair[0]] = pair[1];
+            }
+
+            // Validation
+            if (!data.appName) {
+                alert('Please enter an app name');
+                return;
+            }
+            
+            if (!data.prompt) {
+                alert('Please describe your app');
+                return;
+            }
+            
+            if (!data.imageData) {
+                alert('Please upload a design image');
+                return;
+            }
+            
+            if (!data.geminiApiKey) {
+                alert('Please enter your Gemini API key');
+                return;
+            }
+            
+            if (!data.aiPrompt) {
+                alert('Please enter an AI prompt for code generation');
+                return;
+            }
 
             document.getElementById('loading').style.display = 'block';
             document.getElementById('result').style.display = 'none';
             document.querySelector('.btn').disabled = true;
 
-            try {
-                const response = await fetch('/generate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-
+            fetch('/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(function(response) {
                 if (response.ok) {
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const filename = `${data.appName.replace(/[^a-z0-9]/gi, '_')}.aia`;
-
-                    document.getElementById('downloadLink').href = url;
-                    document.getElementById('downloadLink').download = filename;
-                    document.getElementById('result').style.display = 'block';
+                    return response.blob();
                 } else {
-                    alert('Error generating AIA file. Please try again.');
+                    throw new Error('Generation failed');
                 }
-            } catch (error) {
-                alert('Network error. Please check your connection and try again.');
-            }
+            })
+            .then(function(blob) {
+                var url = window.URL.createObjectURL(blob);
+                var filename = data.appName.replace(/[^a-z0-9]/gi, '_') + '.aia';
 
-            document.getElementById('loading').style.display = 'none';
-            document.querySelector('.btn').disabled = false;
+                document.getElementById('downloadLink').href = url;
+                document.getElementById('downloadLink').download = filename;
+                document.getElementById('result').style.display = 'block';
+            })
+            .catch(function(error) {
+                alert('Error generating AIA file. Please try again. Error: ' + error.message);
+            })
+            .finally(function() {
+                document.getElementById('loading').style.display = 'none';
+                document.querySelector('.btn').disabled = false;
+            });
+        });
+
+        // Initial load of saved files
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSavedFiles();
         });
     </script>
 </body>
@@ -749,6 +694,33 @@ def create_blocks_file(app_name, components):
 def index():
     return HTML_TEMPLATE
 
+@app.route('/saved-files')
+def saved_files():
+    try:
+        files = []
+        if os.path.exists(SAVED_FILES_DIR):
+            for filename in os.listdir(SAVED_FILES_DIR):
+                if filename.endswith('.aia'):
+                    filepath = os.path.join(SAVED_FILES_DIR, filename)
+                    stat = os.stat(filepath)
+                    files.append({
+                        'name': filename,
+                        'date': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                    })
+        
+        # Sort by date, newest first
+        files.sort(key=lambda x: x['date'], reverse=True)
+        return jsonify({'files': files})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/download-saved/<filename>')
+def download_saved(filename):
+    try:
+        return send_from_directory(SAVED_FILES_DIR, filename, as_attachment=True)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 404
+
 @app.route('/test-gemini-api', methods=['POST'])
 def test_gemini_api():
     try:
@@ -801,11 +773,23 @@ def generate_aia():
         gemini_api_key = data.get('geminiApiKey', '')
         ai_prompt = data.get('aiPrompt', '')
 
+        # Validate required fields
+        if not app_name:
+            return jsonify({'error': 'App name is required'}), 400
+        if not prompt:
+            return jsonify({'error': 'App description is required'}), 400
+        if not image_data:
+            return jsonify({'error': 'Design image is required'}), 400
+        if not gemini_api_key:
+            return jsonify({'error': 'Gemini API key is required'}), 400
+        if not ai_prompt:
+            return jsonify({'error': 'AI prompt is required'}), 400
+
         # Create project structure
         project_data = create_basic_project_structure(app_name, app_type, prompt)
         components = project_data["Properties"].get("$Components", [])
 
-        # If AI coding is requested, use Gemini API to enhance blocks
+        # Use Gemini API to enhance blocks
         ai_generated_blocks = None
         if gemini_api_key and ai_prompt:
             try:
@@ -846,6 +830,7 @@ def generate_aia():
                             ai_generated_blocks = result['candidates'][0]['content']['parts'][0]['text']
             except Exception as e:
                 print(f"Error using Gemini API: {str(e)}")
+                return jsonify({'error': f'Gemini API error: {str(e)}'}), 500
 
         # Create blocks data
         blocks_data = create_blocks_file(app_name, components)
@@ -940,8 +925,10 @@ aname={app_name}
 
         aia_buffer.seek(0)
 
-        # Save a copy locally for debugging
-        with open(f'{app_name.replace(" ", "_")}.aia', 'wb') as f:
+        # Save the file to the saved files directory
+        filename = f'{app_name.replace(" ", "_")}.aia'
+        filepath = os.path.join(SAVED_FILES_DIR, filename)
+        with open(filepath, 'wb') as f:
             f.write(aia_buffer.getvalue())
 
         # Reset buffer position
@@ -950,7 +937,7 @@ aname={app_name}
         return send_file(
             aia_buffer,
             as_attachment=True,
-            download_name=f'{app_name.replace(" ", "_")}.aia',
+            download_name=filename,
             mimetype='application/zip'
         )
 
@@ -959,6 +946,6 @@ aname={app_name}
 
 if __name__ == '__main__':
     print("🚀 Starting MIT App Inventor AIA Generator Server...")
-    print("📱 Server running at: http://127.0.0.1:5000")
+    print("📱 Server running at: http://0.0.0.0:5000")
     print("💡 Navigate to the URL above to start creating AIA files!")
     app.run(host='0.0.0.0', port=5000, debug=True)
