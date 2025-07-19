@@ -468,33 +468,34 @@ HTML_TEMPLATE = '''
             var data = {};
             
             // Convert FormData to regular object
-            formData.forEach(function(value, key) {
-                data[key] = value;
-            });
+            var formDataEntries = formData.entries();
+            for (var entry = formDataEntries.next(); !entry.done; entry = formDataEntries.next()) {
+                data[entry.value[0]] = entry.value[1];
+            }
 
             // Validation
             if (!data.appName) {
-                alert('Please enter an app name');
+                alert("Please enter an app name");
                 return;
             }
             
             if (!data.prompt) {
-                alert('Please describe your app');
+                alert("Please describe your app");
                 return;
             }
             
             if (!data.imageData) {
-                alert('Please upload a design image');
+                alert("Please upload a design image");
                 return;
             }
             
             if (!data.geminiApiKey) {
-                alert('Please enter your Gemini API key');
+                alert("Please enter your Gemini API key");
                 return;
             }
             
             if (!data.aiPrompt) {
-                alert('Please enter an AI prompt for code generation');
+                alert("Please enter an AI prompt for code generation");
                 return;
             }
 
@@ -513,7 +514,7 @@ HTML_TEMPLATE = '''
                 if (response.ok) {
                     return response.blob();
                 } else {
-                    throw new Error('Generation failed');
+                    throw new Error("Generation failed");
                 }
             })
             .then(function(blob) {
@@ -525,7 +526,7 @@ HTML_TEMPLATE = '''
                 document.getElementById('result').style.display = 'block';
             })
             .catch(function(error) {
-                alert('Error generating AIA file. Please try again. Error: ' + error.message);
+                alert("Error generating AIA file. Please try again. Error: " + error.message);
             })
             .finally(function() {
                 document.getElementById('loading').style.display = 'none';
