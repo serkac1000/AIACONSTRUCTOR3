@@ -339,19 +339,22 @@ HTML_TEMPLATE = '''
 
     <script>
         // Tab functionality
-        document.querySelectorAll('.tab').forEach(function(tab) {
-            tab.addEventListener('click', function() {
+        var tabs = document.querySelectorAll('.tab');
+        for (var i = 0; i < tabs.length; i++) {
+            tabs[i].addEventListener('click', function() {
                 // Remove active class from all tabs
-                document.querySelectorAll('.tab').forEach(function(t) {
-                    t.classList.remove('active');
-                });
+                var allTabs = document.querySelectorAll('.tab');
+                for (var j = 0; j < allTabs.length; j++) {
+                    allTabs[j].classList.remove('active');
+                }
                 // Add active class to clicked tab
                 this.classList.add('active');
 
                 // Hide all tab content
-                document.querySelectorAll('.tab-content').forEach(function(content) {
-                    content.classList.remove('active');
-                });
+                var allContent = document.querySelectorAll('.tab-content');
+                for (var k = 0; k < allContent.length; k++) {
+                    allContent[k].classList.remove('active');
+                }
                 // Show content for clicked tab
                 document.getElementById(this.dataset.tab + '-tab').classList.add('active');
                 
@@ -360,7 +363,7 @@ HTML_TEMPLATE = '''
                     loadSavedFiles();
                 }
             });
-        });
+        }
 
         // Image upload preview
         document.getElementById('designImage').addEventListener('change', function(e) {
@@ -531,9 +534,13 @@ HTML_TEMPLATE = '''
         });
 
         // Initial load of saved files
-        document.addEventListener('DOMContentLoaded', function() {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                loadSavedFiles();
+            });
+        } else {
             loadSavedFiles();
-        });
+        }
     </script>
 </body>
 </html>
