@@ -250,14 +250,14 @@ HTML_TEMPLATE = '''
 <body>
     <div class="container">
         <h1>🚀 MIT App Inventor AIA Generator</h1>
-        
+
         <div class="tabs">
             <div class="tab active" data-tab="basic">Basic Settings</div>
             <div class="tab" data-tab="design">Design Upload</div>
             <div class="tab" data-tab="ai">AI Coding</div>
             <div class="tab" data-tab="preview">App Preview</div>
         </div>
-        
+
         <form id="aiaForm">
             <div class="tab-content active" id="basic-tab">
                 <div class="row">
@@ -280,13 +280,13 @@ HTML_TEMPLATE = '''
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="prompt">Describe your app (be specific about features, UI, and functionality):</label>
                     <textarea id="prompt" name="prompt" required placeholder="Create a simple calculator app with buttons for numbers 0-9, basic operations (+, -, *, /), equals button, and clear button. The app should have a display screen showing the current number and result. Use a clean, modern design with blue buttons and white background."></textarea>
                 </div>
             </div>
-            
+
             <div class="tab-content" id="design-tab">
                 <div class="form-group">
                     <label for="designImage">Upload Design Image (optional):</label>
@@ -299,7 +299,7 @@ HTML_TEMPLATE = '''
                     <input type="hidden" id="imageData" name="imageData">
                 </div>
             </div>
-            
+
             <div class="tab-content" id="ai-tab">
                 <div class="api-section">
                     <div class="form-group">
@@ -315,7 +315,7 @@ HTML_TEMPLATE = '''
                     <div class="api-response" id="apiResponse"></div>
                 </div>
             </div>
-            
+
             <div class="tab-content" id="preview-tab">
                 <div class="preview-container">
                     <h3>App Preview</h3>
@@ -327,15 +327,15 @@ HTML_TEMPLATE = '''
                     </div>
                 </div>
             </div>
-            
+
             <button type="submit" class="btn">Generate AIA File</button>
         </form>
-        
+
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <p>Generating your MIT App Inventor project...</p>
         </div>
-        
+
         <div class="result" id="result">
             <h3>Success! 🎉</h3>
             <p>Your AIA file has been generated successfully.</p>
@@ -351,14 +351,14 @@ HTML_TEMPLATE = '''
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 // Add active class to clicked tab
                 this.classList.add('active');
-                
+
                 // Hide all tab content
                 document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
                 // Show content for clicked tab
                 document.getElementById(this.dataset.tab + '-tab').classList.add('active');
             });
         });
-        
+
         // Image upload preview
         document.getElementById('designImage').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -368,14 +368,14 @@ HTML_TEMPLATE = '''
                     const imagePreview = document.getElementById('imagePreview');
                     imagePreview.src = event.target.result;
                     imagePreview.style.display = 'block';
-                    
+
                     // Store base64 image data
                     document.getElementById('imageData').value = event.target.result;
                 };
                 reader.readAsDataURL(file);
             }
         });
-        
+
         // Save API Key
         document.getElementById('saveApiKey').addEventListener('click', function() {
             const apiKey = document.getElementById('geminiApiKey').value;
@@ -386,26 +386,26 @@ HTML_TEMPLATE = '''
                 alert('Please enter an API Key');
             }
         });
-        
+
         // Load saved API Key
         if (localStorage.getItem('geminiApiKey')) {
             document.getElementById('geminiApiKey').value = localStorage.getItem('geminiApiKey');
         }
-        
+
         // Test API Key
         document.getElementById('testApiKey').addEventListener('click', async function() {
             const apiKey = document.getElementById('geminiApiKey').value;
             const prompt = document.getElementById('aiPrompt').value || 'Generate a simple greeting';
-            
+
             if (!apiKey) {
                 alert('Please enter an API Key');
                 return;
             }
-            
+
             const apiResponse = document.getElementById('apiResponse');
             apiResponse.textContent = 'Testing API connection...';
             apiResponse.style.display = 'block';
-            
+
             try {
                 const response = await fetch('/test-gemini-api', {
                     method: 'POST',
@@ -414,9 +414,9 @@ HTML_TEMPLATE = '''
                     },
                     body: JSON.stringify({ apiKey, prompt })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     apiResponse.textContent = 'API Test Successful! Response:\n\n' + data.response;
                 } else {
@@ -426,17 +426,17 @@ HTML_TEMPLATE = '''
                 apiResponse.textContent = 'Error: ' + error.message;
             }
         });
-        
+
         // Generate preview based on form inputs
         function updatePreview() {
             const appName = document.getElementById('appName').value || 'My App';
             const appType = document.getElementById('appType').value;
             const prompt = document.getElementById('prompt').value;
-            
+
             // Clear previous preview
             const previewScreen = document.getElementById('previewScreen');
             previewScreen.innerHTML = '';
-            
+
             // Add app title
             const titleBar = document.createElement('div');
             titleBar.style.width = '100%';
@@ -448,7 +448,7 @@ HTML_TEMPLATE = '''
             titleBar.style.fontWeight = 'bold';
             titleBar.textContent = appName;
             previewScreen.appendChild(titleBar);
-            
+
             // Parse prompt for components
             if (prompt.toLowerCase().includes('calculator')) {
                 // Add calculator display
@@ -466,7 +466,7 @@ HTML_TEMPLATE = '''
                 display.style.paddingRight = '10px';
                 display.textContent = '0';
                 previewScreen.appendChild(display);
-                
+
                 // Add calculator buttons
                 const buttonContainer = document.createElement('div');
                 buttonContainer.style.position = 'absolute';
@@ -477,7 +477,7 @@ HTML_TEMPLATE = '''
                 buttonContainer.style.display = 'grid';
                 buttonContainer.style.gridTemplateColumns = 'repeat(4, 1fr)';
                 buttonContainer.style.gridGap = '10px';
-                
+
                 // Numbers and operations
                 const buttons = ['7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', '0', '.', '=', '+'];
                 buttons.forEach(btn => {
@@ -493,7 +493,7 @@ HTML_TEMPLATE = '''
                     button.textContent = btn;
                     buttonContainer.appendChild(button);
                 });
-                
+
                 previewScreen.appendChild(buttonContainer);
             } else if (prompt.toLowerCase().includes('list')) {
                 // Create a list view
@@ -506,7 +506,7 @@ HTML_TEMPLATE = '''
                 listView.style.backgroundColor = 'white';
                 listView.style.border = '1px solid #ddd';
                 listView.style.overflow = 'auto';
-                
+
                 // Add list items
                 for (let i = 1; i <= 10; i++) {
                     const item = document.createElement('div');
@@ -515,7 +515,7 @@ HTML_TEMPLATE = '''
                     item.textContent = 'Item ' + i;
                     listView.appendChild(item);
                 }
-                
+
                 previewScreen.appendChild(listView);
             } else {
                 // Default layout with some basic components
@@ -527,7 +527,7 @@ HTML_TEMPLATE = '''
                 label.style.padding = '10px 20px';
                 label.textContent = 'Welcome to ' + appName;
                 previewScreen.appendChild(label);
-                
+
                 const button = document.createElement('div');
                 button.className = 'preview-component';
                 button.style.top = '150px';
@@ -541,26 +541,26 @@ HTML_TEMPLATE = '''
                 previewScreen.appendChild(button);
             }
         }
-        
+
         // Update preview when inputs change
         document.getElementById('appName').addEventListener('input', updatePreview);
         document.getElementById('appType').addEventListener('change', updatePreview);
         document.getElementById('prompt').addEventListener('input', updatePreview);
-        
+
         // Initial preview update
         document.addEventListener('DOMContentLoaded', updatePreview);
-        
+
         // Form submission
         document.getElementById('aiaForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
-            
+
             document.getElementById('loading').style.display = 'block';
             document.getElementById('result').style.display = 'none';
             document.querySelector('.btn').disabled = true;
-            
+
             try {
                 const response = await fetch('/generate', {
                     method: 'POST',
@@ -569,12 +569,12 @@ HTML_TEMPLATE = '''
                     },
                     body: JSON.stringify(data)
                 });
-                
+
                 if (response.ok) {
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const filename = `${data.appName.replace(/[^a-z0-9]/gi, '_')}.aia`;
-                    
+
                     document.getElementById('downloadLink').href = url;
                     document.getElementById('downloadLink').download = filename;
                     document.getElementById('result').style.display = 'block';
@@ -584,7 +584,7 @@ HTML_TEMPLATE = '''
             } catch (error) {
                 alert('Network error. Please check your connection and try again.');
             }
-            
+
             document.getElementById('loading').style.display = 'none';
             document.querySelector('.btn').disabled = false;
         });
@@ -595,7 +595,7 @@ HTML_TEMPLATE = '''
 
 def create_basic_project_structure(app_name, app_type, prompt):
     """Create basic MIT App Inventor project structure based on prompt"""
-    
+
     # Base project properties
     project_properties = {
         "name": app_name,
@@ -626,13 +626,13 @@ def create_basic_project_structure(app_name, app_type, prompt):
             "Uuid": str(uuid.uuid4())
         }
     }
-    
+
     # Generate components based on app type and prompt
     components = []
-    
+
     # Parse prompt for common UI elements
     prompt_lower = prompt.lower()
-    
+
     if 'button' in prompt_lower:
         components.append({
             "$Name": "Button1",
@@ -641,7 +641,7 @@ def create_basic_project_structure(app_name, app_type, prompt):
             "Text": "Click Me",
             "Uuid": str(uuid.uuid4())
         })
-    
+
     if 'label' in prompt_lower or 'text' in prompt_lower or 'display' in prompt_lower:
         components.append({
             "$Name": "Label1",
@@ -650,7 +650,7 @@ def create_basic_project_structure(app_name, app_type, prompt):
             "Text": "Hello World!",
             "Uuid": str(uuid.uuid4())
         })
-    
+
     if 'textbox' in prompt_lower or 'input' in prompt_lower:
         components.append({
             "$Name": "TextBox1",
@@ -659,7 +659,7 @@ def create_basic_project_structure(app_name, app_type, prompt):
             "Hint": "Enter text here",
             "Uuid": str(uuid.uuid4())
         })
-    
+
     if 'image' in prompt_lower:
         components.append({
             "$Name": "Image1",
@@ -667,7 +667,7 @@ def create_basic_project_structure(app_name, app_type, prompt):
             "$Version": "4",
             "Uuid": str(uuid.uuid4())
         })
-    
+
     if 'list' in prompt_lower:
         components.append({
             "$Name": "ListView1",
@@ -675,7 +675,7 @@ def create_basic_project_structure(app_name, app_type, prompt):
             "$Version": "6",
             "Uuid": str(uuid.uuid4())
         })
-    
+
     # Add calculator-specific components if mentioned
     if 'calculator' in prompt_lower:
         # Add number buttons
@@ -687,7 +687,7 @@ def create_basic_project_structure(app_name, app_type, prompt):
                 "Text": str(i),
                 "Uuid": str(uuid.uuid4())
             })
-        
+
         # Add operation buttons
         operations = ['+', '-', '*', '/', '=', 'C']
         for i, op in enumerate(operations):
@@ -698,7 +698,7 @@ def create_basic_project_structure(app_name, app_type, prompt):
                 "Text": op,
                 "Uuid": str(uuid.uuid4())
             })
-        
+
         # Add display label
         components.append({
             "$Name": "DisplayLabel",
@@ -708,11 +708,11 @@ def create_basic_project_structure(app_name, app_type, prompt):
             "FontSize": "24",
             "Uuid": str(uuid.uuid4())
         })
-    
+
     # Add components to project
     if components:
         project_properties["Properties"]["$Components"] = components
-    
+
     return project_properties
 
 def create_blocks_file(app_name, components):
@@ -728,7 +728,7 @@ def create_blocks_file(app_name, components):
             "$Components": []
         }
     }
-    
+
     # Add basic event blocks for buttons
     event_blocks = []
     for component in components:
@@ -739,10 +739,10 @@ def create_blocks_file(app_name, components):
                 "component": component["$Name"],
                 "event": "Click"
             })
-    
+
     if event_blocks:
         blocks_data["blocks"] = event_blocks
-    
+
     return blocks_data
 
 @app.route('/')
@@ -755,10 +755,10 @@ def test_gemini_api():
         data = request.json
         api_key = data.get('apiKey')
         prompt = data.get('prompt', 'Generate a simple greeting')
-        
+
         if not api_key:
             return jsonify({'error': 'API key is required'}), 400
-            
+
         # Call Gemini API
         url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
         headers = {
@@ -772,9 +772,9 @@ def test_gemini_api():
                 }]
             }]
         }
-        
+
         response = requests.post(url, headers=headers, json=payload)
-        
+
         if response.status_code == 200:
             result = response.json()
             # Extract text from the response
@@ -782,11 +782,11 @@ def test_gemini_api():
                 if 'content' in result['candidates'][0] and 'parts' in result['candidates'][0]['content']:
                     text = result['candidates'][0]['content']['parts'][0]['text']
                     return jsonify({'response': text})
-            
+
             return jsonify({'error': 'Could not parse API response'}), 500
         else:
             return jsonify({'error': f'API Error: {response.status_code} - {response.text}'}), response.status_code
-            
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -800,11 +800,11 @@ def generate_aia():
         image_data = data.get('imageData', '')
         gemini_api_key = data.get('geminiApiKey', '')
         ai_prompt = data.get('aiPrompt', '')
-        
+
         # Create project structure
         project_data = create_basic_project_structure(app_name, app_type, prompt)
         components = project_data["Properties"].get("$Components", [])
-        
+
         # If AI coding is requested, use Gemini API to enhance blocks
         ai_generated_blocks = None
         if gemini_api_key and ai_prompt:
@@ -815,20 +815,20 @@ def generate_aia():
                     "Content-Type": "application/json",
                     "x-goog-api-key": gemini_api_key
                 }
-                
+
                 # Enhance the prompt with specific instructions for MIT App Inventor blocks
                 enhanced_prompt = f"""
                 Generate MIT App Inventor blocks code for the following app:
                 App Name: {app_name}
                 App Type: {app_type}
                 Description: {prompt}
-                
+
                 User's specific request: {ai_prompt}
-                
+
                 Please provide the blocks code in a format that can be used in MIT App Inventor.
                 Focus on functionality that matches the description.
                 """
-                
+
                 payload = {
                     "contents": [{
                         "parts": [{
@@ -836,9 +836,9 @@ def generate_aia():
                         }]
                     }]
                 }
-                
+
                 response = requests.post(url, headers=headers, json=payload)
-                
+
                 if response.status_code == 200:
                     result = response.json()
                     if 'candidates' in result and len(result['candidates']) > 0:
@@ -846,17 +846,17 @@ def generate_aia():
                             ai_generated_blocks = result['candidates'][0]['content']['parts'][0]['text']
             except Exception as e:
                 print(f"Error using Gemini API: {str(e)}")
-        
+
         # Create blocks data
         blocks_data = create_blocks_file(app_name, components)
-        
+
         # If AI generated blocks are available, add them to documentation
         if ai_generated_blocks:
             blocks_data["ai_generated_code"] = ai_generated_blocks
-        
+
         # Create AIA file in memory
         aia_buffer = io.BytesIO()
-        
+
         with zipfile.ZipFile(aia_buffer, 'w', zipfile.ZIP_DEFLATED) as aia_file:
             # Add project.properties
             project_json = json.dumps(project_data, indent=2)
@@ -871,23 +871,23 @@ versionname=1.0
 useslocation=false
 aname={app_name}
             """.strip())
-            
+
             # Add Screen1.scm (scheme file)
             screen_scm = f"#|\n$JSON\n{project_json}\n|#"
             aia_file.writestr(f'src/appinventor/ai_user/{app_name}/Screen1.scm', screen_scm)
-            
+
             # Add Screen1.bky (blocks file)
             blocks_json = json.dumps(blocks_data, indent=2)
             blocks_content = f"#|\n$JSON\n{blocks_json}\n|#"
             aia_file.writestr(f'src/appinventor/ai_user/{app_name}/Screen1.bky', blocks_content)
-            
+
             # Add required empty directories
             for dir_path in ['assets', 'src', 'build']:
                 aia_file.writestr(f'{dir_path}/.gitkeep', '')
-            
+
             # Add proper directory structure
             aia_file.writestr(f'src/appinventor/ai_user/{app_name}/.gitkeep', '')
-            
+
             # Add design image if provided
             if image_data and image_data.startswith('data:image/'):
                 try:
@@ -895,25 +895,25 @@ aname={app_name}
                     image_format = image_data.split(';')[0].split('/')[1]
                     image_base64 = image_data.split(',')[1]
                     image_binary = base64.b64decode(image_base64)
-                    
+
                     # Save the image as an asset
                     image_filename = f'design_reference.{image_format}'
                     aia_file.writestr(f'assets/{image_filename}', image_binary)
-                    
+
                     # Add the image to project assets list
                     project_data['assets'].append(image_filename)
-                    
+
                     # Update the project.json with the new asset
                     updated_project_json = json.dumps(project_data, indent=2)
                     screen_scm = f"#|\n$JSON\n{updated_project_json}\n|#"
                     aia_file.writestr(f'src/appinventor/ai_user/{app_name}/Screen1.scm', screen_scm)
                 except Exception as e:
                     print(f"Error processing image: {str(e)}")
-            
+
             # Add AI-generated documentation if available
             if ai_generated_blocks:
                 aia_file.writestr('assets/ai_generated_code.txt', ai_generated_blocks)
-                
+
                 # Create a documentation component in the app if AI code was generated
                 if 'ai_generated_code' in blocks_data:
                     # Add a button to view AI code
@@ -924,36 +924,36 @@ aname={app_name}
                         "Text": "View AI Generated Code",
                         "Uuid": str(uuid.uuid4())
                     }
-                    
+
                     if "$Components" in project_data["Properties"]:
                         project_data["Properties"]["$Components"].append(ai_button)
                     else:
                         project_data["Properties"]["$Components"] = [ai_button]
-                        
+
                     # Update the project.json with the new component
                     updated_project_json = json.dumps(project_data, indent=2)
                     screen_scm = f"#|\n$JSON\n{updated_project_json}\n|#"
                     aia_file.writestr(f'src/appinventor/ai_user/{app_name}/Screen1.scm', screen_scm)
-            
+
             # Add a simple asset file to ensure assets are properly recognized
             aia_file.writestr('assets/README.txt', f'Assets for {app_name}')
-        
+
         aia_buffer.seek(0)
-        
+
         # Save a copy locally for debugging
         with open(f'{app_name.replace(" ", "_")}.aia', 'wb') as f:
             f.write(aia_buffer.getvalue())
-        
+
         # Reset buffer position
         aia_buffer.seek(0)
-        
+
         return send_file(
             aia_buffer,
             as_attachment=True,
             download_name=f'{app_name.replace(" ", "_")}.aia',
             mimetype='application/zip'
         )
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
