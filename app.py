@@ -441,12 +441,13 @@ HTML_TEMPLATE = '''
                     var savedFilesList = document.getElementById('savedFilesList');
                     if (data.files && data.files.length > 0) {
                         savedFilesList.innerHTML = '';
-                        data.files.forEach(function(file) {
+                        for (var i = 0; i < data.files.length; i++) {
+                            var file = data.files[i];
                             var fileItem = document.createElement('div');
                             fileItem.className = 'file-item';
                             fileItem.innerHTML = '<a href="/download-saved/' + encodeURIComponent(file.name) + '" class="file-link">' + file.name + '</a><span>' + file.date + '</span>';
                             savedFilesList.appendChild(fileItem);
-                        });
+                        }
                     } else {
                         savedFilesList.innerHTML = '<p>No saved files yet.</p>';
                     }
@@ -464,9 +465,9 @@ HTML_TEMPLATE = '''
             var data = {};
             
             // Convert FormData to regular object
-            for (var pair of formData.entries()) {
-                data[pair[0]] = pair[1];
-            }
+            formData.forEach(function(value, key) {
+                data[key] = value;
+            });
 
             // Validation
             if (!data.appName) {
